@@ -2,12 +2,11 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ThemeContext } from "../context/ThemeContext.js";
 import { io, Socket } from "socket.io-client";
 import { useLocation, useNavigate } from "react-router-dom";
+import { API_BASE } from "../lib/api";
 
 interface UserLite { _id: string; username: string; profilepic?: string }
 interface CommunityLite { _id: string; name: string; avatar?: string }
 interface Msg { _id: string; roomId: string; body: string; from: string; createdAt: string; optimistic?: boolean; clientId?: string }
-
-const API_BASE = "https://sangam-backend-b7pm.onrender.com";
 
 function ChatCommunity() {
     const [activeTab, setActiveTab] = useState<"chat" | "community">("chat");
