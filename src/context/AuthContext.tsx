@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, type ReactNode } from "react";
-
+import { API_BASE } from "../lib/api.js";
 
 interface User {
     _id?: string;
@@ -26,7 +26,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const response = await fetch("http://localhost:3000/server/user/profile", {
+                const response = await fetch(`${API_BASE}/server/user/profile`, {
                     credentials: "include"
                 });
                 if (response.ok) {
