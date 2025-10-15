@@ -7,6 +7,8 @@ interface UserLite { _id: string; username: string; profilepic?: string }
 interface CommunityLite { _id: string; name: string; avatar?: string }
 interface Msg { _id: string; roomId: string; body: string; from: string; createdAt: string; optimistic?: boolean; clientId?: string }
 
+const API_BASE = "https://sangam-backend-b7pm.onrender.com";
+
 function ChatCommunity() {
     const [activeTab, setActiveTab] = useState<"chat" | "community">("chat");
     const [currentUser, setCurrentUser] = useState<UserLite | null>(null);
@@ -43,7 +45,7 @@ function ChatCommunity() {
     useEffect(() => {
         (async () => {
             try {
-                const res = await fetch("http://localhost:3000/server/user/profile", { credentials: "include" });
+                const res = await fetch(`${API_BASE}/server/user/profile`, { credentials: "include" });
                 if (res.ok) {
                     const u = await res.json();
                     setCurrentUser({ _id: u._id, username: u.username, profilepic: u.profilepic });
@@ -57,7 +59,7 @@ function ChatCommunity() {
         (async () => {
             try {
                 if (!currentUser) return;
-                const res = await fetch("http://localhost:3000/server/chat/conversations/list", { credentials: "include" });
+                const res = await fetch(`${API_BASE}/server/chat/conversations/list`, { credentials: "include" });
                 if (res.ok) {
                     const list = await res.json();
                     const unique: Record<string, UserLite> = {};
@@ -80,7 +82,7 @@ function ChatCommunity() {
         (async () => {
             try {
                 if (!currentUser) return;
-                const res = await fetch("http://localhost:3000/server/community/my", { credentials: "include" });
+                const res = await fetch(`${API_BASE}/server/community/my`, { credentials: "include" });
                 if (res.ok) {
                     const arr = await res.json();
                     const mapped: CommunityLite[] = (arr || []).map((c: any) => ({ _id: String(c._id), name: c.name, avatar: c.avatar }));
@@ -103,7 +105,7 @@ function ChatCommunity() {
     }, [location.search]);
 
     const socket: Socket | null = useMemo(() => {
-        const s = io("http://localhost:3000", { withCredentials: true, autoConnect: true });
+        const s = io(API_BASE, { withCredentials: true, autoConnect: true });
         return s;
     }, []);
 
@@ -195,7 +197,7 @@ function ChatCommunity() {
             if (existing && existing.length > 0) return;
             try {
                 if (currentRoomId.startsWith("dm:") && currentUser && selectedUser) {
-                    const res = await fetch(`http://localhost:3000/server/chat/dm/${encodeURIComponent(selectedUser._id)}/history`, { credentials: "include" });
+                    const res = await fetch(`${API_BASE}/server/chat/dm/${encodeURIComponent(selectedUser._id)}/history`, { credentials: "include" });
                     if (res.ok) {
                         const data = await res.json();
                         const mapped: Msg[] = (data.messages || []).map((m: any) => ({
@@ -209,7 +211,7 @@ function ChatCommunity() {
                     }
                 } else if (currentRoomId.startsWith("community:") && selectedCommunity) {
                     const communityId = selectedCommunity._id;
-                    const res = await fetch(`http://localhost:3000/server/community/${encodeURIComponent(communityId)}/messages`, { credentials: "include" });
+                    const res = await fetch(`${API_BASE}/server/community/${encodeURIComponent(communityId)}/messages`, { credentials: "include" });
                     if (res.ok) {
                         const data = await res.json();
                         const mapped: Msg[] = (data || []).map((m: any) => ({
@@ -249,7 +251,7 @@ function ChatCommunity() {
         // REST fallback when socket disconnected
         try {
             if (currentRoomId.startsWith("dm:") && selectedUser) {
-                const res = await fetch("http://localhost:3000/server/chat/dm/send", {
+                const res = await fetch(`${API_BASE}/server/chat/dm/send`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
@@ -263,7 +265,7 @@ function ChatCommunity() {
                     }));
                 }
             } else if (currentRoomId.startsWith("community:") && selectedCommunity) {
-                const res = await fetch(`http://localhost:3000/server/community/${encodeURIComponent(selectedCommunity._id)}/messages`, {
+                const res = await fetch(`${API_BASE}/server/community/${encodeURIComponent(selectedCommunity._id)}/messages`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
@@ -297,7 +299,7 @@ function ChatCommunity() {
             try {
                 const q = memberSearch.trim();
                 if (!q) { setMemberResults([]); return; }
-                const res = await fetch(`http://localhost:3000/server/user/search?q=${encodeURIComponent(q)}`, { credentials: "include" });
+                const res = await fetch(`${API_BASE}/server/user/search?q=${encodeURIComponent(q)}`, { credentials: "include" });
                 if (res.ok) {
                     const arr = await res.json();
                     setMemberResults(arr as UserLite[]);
@@ -313,7 +315,7 @@ function ChatCommunity() {
             try {
                 const q = manageSearch.trim();
                 if (!q) { setManageResults([]); return; }
-                const res = await fetch(`http://localhost:3000/server/user/search?q=${encodeURIComponent(q)}`, { credentials: "include" });
+                const res = await fetch(`${API_BASE}/server/user/search?q=${encodeURIComponent(q)}`, { credentials: "include" });
                 if (res.ok) {
                     const arr = await res.json();
                     setManageResults(arr as UserLite[]);
@@ -339,7 +341,7 @@ function ChatCommunity() {
     const createCommunity = async () => {
         if (!newCommunityName.trim()) return;
         try {
-            const res = await fetch("http://localhost:3000/server/community", {
+            const res = await fetch(`${API_BASE}/server/community`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -366,7 +368,7 @@ function ChatCommunity() {
     const addMembersViaSearch = async () => {
         if (!selectedCommunity || membersToAdd.length === 0) return;
         try {
-            const res = await fetch(`http://localhost:3000/server/community/${encodeURIComponent(selectedCommunity._id)}/members/add`, {
+            const res = await fetch(`${API_BASE}/server/community/${encodeURIComponent(selectedCommunity._id)}/members/add`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
