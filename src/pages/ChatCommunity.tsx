@@ -21,6 +21,18 @@ function ChatCommunity() {
     const [searchUser, setSearchUser] = useState("");
     const [searchCommunity, setSearchCommunity] = useState("");
     const [isConnected, setIsConnected] = useState(false);
+    // Community create with search
+    const [newCommunityName, setNewCommunityName] = useState("");
+    const [newCommunityDesc, setNewCommunityDesc] = useState("");
+    const [newCommunityLang, setNewCommunityLang] = useState("en");
+    const [newCommunityRegion, setNewCommunityRegion] = useState("");
+    const [memberSearch, setMemberSearch] = useState("");
+    const [memberResults, setMemberResults] = useState<UserLite[]>([]);
+    const [pendingMembers, setPendingMembers] = useState<UserLite[]>([]);
+    // Manage members via search
+    const [manageSearch, setManageSearch] = useState("");
+    const [manageResults, setManageResults] = useState<UserLite[]>([]);
+    const [membersToAdd, setMembersToAdd] = useState<UserLite[]>([]);
 
     const themeContext = useContext(ThemeContext);
     const theme = themeContext && typeof themeContext === "object" && themeContext !== null && "theme" in themeContext ? (themeContext as { theme: string }).theme : "light";
@@ -59,6 +71,23 @@ function ChatCommunity() {
                 }
             } catch (e) {
                 console.error("Failed to load conversations:", (e as any)?.message || e);
+            }
+        })();
+    }, [currentUser]);
+
+    // Load communities current user belongs to
+    useEffect(() => {
+        (async () => {
+            try {
+                if (!currentUser) return;
+                const res = await fetch("http://localhost:3000/server/community/my", { credentials: "include" });
+                if (res.ok) {
+                    const arr = await res.json();
+                    const mapped: CommunityLite[] = (arr || []).map((c: any) => ({ _id: String(c._id), name: c.name, avatar: c.avatar }));
+                    setCommunities(mapped);
+                }
+            } catch (e) {
+                console.error("Failed to load communities:", (e as any)?.message || e);
             }
         })();
     }, [currentUser]);
@@ -262,6 +291,94 @@ function ChatCommunity() {
         navigate({ pathname: "/chatcommunity", search: params.toString() });
     };
 
+    // Debounced user search for community creation
+    useEffect(() => {
+        const h = setTimeout(async () => {
+            try {
+                const q = memberSearch.trim();
+                if (!q) { setMemberResults([]); return; }
+                const res = await fetch(`http://localhost:3000/server/user/search?q=${encodeURIComponent(q)}`, { credentials: "include" });
+                if (res.ok) {
+                    const arr = await res.json();
+                    setMemberResults(arr as UserLite[]);
+                }
+            } catch {}
+        }, 300);
+        return () => clearTimeout(h);
+    }, [memberSearch]);
+
+    // Debounced user search for managing members
+    useEffect(() => {
+        const h = setTimeout(async () => {
+            try {
+                const q = manageSearch.trim();
+                if (!q) { setManageResults([]); return; }
+                const res = await fetch(`http://localhost:3000/server/user/search?q=${encodeURIComponent(q)}`, { credentials: "include" });
+                if (res.ok) {
+                    const arr = await res.json();
+                    setManageResults(arr as UserLite[]);
+                }
+            } catch {}
+        }, 300);
+        return () => clearTimeout(h);
+    }, [manageSearch]);
+
+    const addPendingMember = (u: UserLite) => {
+        setPendingMembers(prev => prev.some(x => x._id === u._id) ? prev : [...prev, u]);
+    };
+    const removePendingMember = (id: string) => {
+        setPendingMembers(prev => prev.filter(x => x._id !== id));
+    };
+    const pickMemberToAdd = (u: UserLite) => {
+        setMembersToAdd(prev => prev.some(x => x._id === u._id) ? prev : [...prev, u]);
+    };
+    const removePickedMember = (id: string) => {
+        setMembersToAdd(prev => prev.filter(x => x._id !== id));
+    };
+
+    const createCommunity = async () => {
+        if (!newCommunityName.trim()) return;
+        try {
+            const res = await fetch("http://localhost:3000/server/community", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    name: newCommunityName.trim(),
+                    description: newCommunityDesc || undefined,
+                    language: newCommunityLang || undefined,
+                    region: newCommunityRegion || undefined,
+                    members: pendingMembers.map(m => m._id)
+                })
+            });
+            if (res.ok) {
+                const c = await res.json();
+                const lite: CommunityLite = { _id: c._id, name: c.name, avatar: c.avatar };
+                setCommunities(prev => prev.find(x => x._id === lite._id) ? prev : [lite, ...prev]);
+                setSelectedCommunity(lite);
+                setActiveTab("community");
+                setNewCommunityName(""); setNewCommunityDesc(""); setNewCommunityLang("en"); setNewCommunityRegion("");
+                setMemberSearch(""); setMemberResults([]); setPendingMembers([]);
+            }
+        } catch {}
+    };
+
+    const addMembersViaSearch = async () => {
+        if (!selectedCommunity || membersToAdd.length === 0) return;
+        try {
+            const res = await fetch(`http://localhost:3000/server/community/${encodeURIComponent(selectedCommunity._id)}/members/add`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ members: membersToAdd.map(u => u._id) })
+            });
+            if (res.ok) {
+                setMembersToAdd([]);
+                setManageSearch(""); setManageResults([]);
+            }
+        } catch {}
+    };
+
     const activeMessages = currentRoomId ? (roomMessages[currentRoomId] || []) : [];
 
     return (
@@ -365,7 +482,39 @@ function ChatCommunity() {
                                         Open
                                     </button>
                                 </div>
-                                
+                                <div className="mb-4 border-t pt-4">
+                                    <div className="mb-2 text-xs opacity-70">Create community</div>
+                                    <input value={newCommunityName} onChange={(e)=>setNewCommunityName(e.target.value)} placeholder="Name" className={`mb-2 w-full rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
+                                    <input value={newCommunityDesc} onChange={(e)=>setNewCommunityDesc(e.target.value)} placeholder="Description (optional)" className={`mb-2 w-full rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
+                                    <div className="mb-2 flex gap-2">
+                                        <input value={newCommunityLang} onChange={(e)=>setNewCommunityLang(e.target.value)} placeholder="Lang (en)" className={`flex-1 rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
+                                        <input value={newCommunityRegion} onChange={(e)=>setNewCommunityRegion(e.target.value)} placeholder="Region" className={`w-[130px] rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
+                                    </div>
+                                    <input value={memberSearch} onChange={(e)=>setMemberSearch(e.target.value)} placeholder="Search users to add" className={`mb-2 w-full rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
+                                    {memberResults.length>0 && (
+                                        <div className={`mb-2 max-h-40 overflow-auto rounded-lg border ${theme === "dark" ? "border-gray-800" : "border-gray-200"}`}>
+                                            {memberResults.map(u => (
+                                                <button key={u._id} onClick={()=>addPendingMember(u)} className={`flex w-full items-center gap-2 px-2 py-2 text-left text-sm ${theme === "dark" ? "hover:bg-gray-900" : "hover:bg-gray-100"}`}>
+                                                    <img src={u.profilepic || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} className="h-6 w-6 rounded-full object-cover" />
+                                                    <span className="truncate">{u.username}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {pendingMembers.length>0 && (
+                                        <div className="mb-2 flex flex-wrap gap-2">
+                                            {pendingMembers.map(u => (
+                                                <span key={u._id} className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs ${theme === "dark" ? "bg-gray-900" : "bg-gray-100"}`}>
+                                                    {u.username}
+                                                    <button onClick={()=>removePendingMember(u._id)} className="opacity-70">×</button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <button onClick={createCommunity} disabled={!newCommunityName.trim()} className={`${theme === "dark" ? "bg-white text-black disabled:opacity-50" : "bg-black text-white disabled:opacity-50"} rounded-lg px-3 py-2 text-sm font-semibold`}>
+                                        Create
+                                    </button>
+                                </div>
                                 <div className="space-y-2">
                                     {communities.length === 0 && (
                                         <div className="text-sm opacity-60">No communities</div>
