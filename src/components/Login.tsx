@@ -1,16 +1,18 @@
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../context/AuthContext.tsx";
-import { ThemeContext } from "../context/ThemeContext.tsx";
+import { AuthContext } from "../context/AuthContext.js";
+import { ThemeContext } from "../context/ThemeContext.js";
+import { API_BASE } from "../lib/api.js";
 function Login() {
   const [useremail, setUserEmail] = useState("")
   const [userPassword, setUserPassword] = useState("")
 
   const navigate = useNavigate()
-  const { theme } = useContext(ThemeContext)
+  const themeContext = useContext(ThemeContext)
+  const theme = (themeContext as any)?.theme ?? "light"
 
   const auth = useContext(AuthContext)
-  const { login } = auth
+  const login = (auth as any)?.login
 
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -18,7 +20,7 @@ function Login() {
     if (useremail === "") return;
     if (userPassword === "") return;
 
-    const response = await fetch("http://localhost:3000/server/user/login", {
+    const response = await fetch(`${API_BASE}/server/user/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include", // send cookies

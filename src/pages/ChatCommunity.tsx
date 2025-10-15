@@ -2,7 +2,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ThemeContext } from "../context/ThemeContext.js";
 import { io, Socket } from "socket.io-client";
 import { useLocation, useNavigate } from "react-router-dom";
-import { API_BASE } from "../lib/api";
+import { API_BASE } from "../lib/api.js";
 
 interface UserLite { _id: string; username: string; profilepic?: string }
 interface CommunityLite { _id: string; name: string; avatar?: string }

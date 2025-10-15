@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { ThemeContext } from "../context/ThemeContext.js";
+import { API_BASE } from "../lib/api.js";
 
 type UserType = {
   _id: string;
@@ -37,8 +38,8 @@ function Profile() {
       try {
         setLoading(true);
         const [meRes, postsRes] = await Promise.all([
-          fetch("http://localhost:3000/server/user/profile", { credentials: "include" }),
-          fetch("http://localhost:3000/server/post", { credentials: "include" }),
+          fetch(`${API_BASE}/server/user/profile`, { credentials: "include" }),
+          fetch(`${API_BASE}/server/post`, { credentials: "include" }),
         ]);
         if (meRes.ok) {
           const meJson = await meRes.json();

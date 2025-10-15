@@ -2,6 +2,7 @@ import { useContext, useState, useEffect } from "react";
 import { ThemeContext } from "../context/ThemeContext.js";
 import Loading from "../components/Loading.js";
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from "../lib/api.js";
 
 interface ThemeContextType {
   theme: string;
@@ -57,7 +58,7 @@ const Home: React.FC = () => {
   const fetchPosts = async () => {
     try {
       setLoading(true)
-      const response = await fetch("http://localhost:3000/server/post", {
+      const response = await fetch(`${API_BASE}/server/post`, {
         credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to fetch posts");
@@ -73,7 +74,7 @@ const Home: React.FC = () => {
 
   const fetchCurrentUser = async () => {
     try {
-      const res = await fetch("http://localhost:3000/server/user/profile", { credentials: "include" })
+      const res = await fetch(`${API_BASE}/server/user/profile`, { credentials: "include" })
       if (res.ok) {
         const user = await res.json()
         setCurrentUser(user)
@@ -95,14 +96,14 @@ const Home: React.FC = () => {
         const formData = new FormData();
         formData.append("content", text);
         formData.append("file", file);
-        response = await fetch("http://localhost:3000/server/post", {
+        response = await fetch(`${API_BASE}/server/post`, {
           method: "POST",
           credentials: "include",
           body: formData,
         });
       }
       else {
-        response = await fetch("http://localhost:3000/server/post", {
+        response = await fetch(`${API_BASE}/server/post`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -123,7 +124,7 @@ const Home: React.FC = () => {
   };
   const handleLike = async (postId: string) => {
     try {
-      const response = await fetch(`http://localhost:3000/server/post/${postId}/like`, {
+      const response = await fetch(`${API_BASE}/server/post/${postId}/like`, {
         method: "PUT",
         credentials: "include"
       })
@@ -143,7 +144,7 @@ const Home: React.FC = () => {
 
   const handleShare = async (postId: string) => {
     try {
-      const res = await fetch(`http://localhost:3000/server/post/${postId}/share`, {
+      const res = await fetch(`${API_BASE}/server/post/${postId}/share`, {
         method: "PUT",
         credentials: "include"
       })
@@ -168,7 +169,7 @@ const Home: React.FC = () => {
     const content = commentText[postId]?.trim()
     if (!content) return
     try {
-      const res = await fetch("http://localhost:3000/server/comment", {
+      const res = await fetch(`${API_BASE}/server/comment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -190,7 +191,7 @@ const Home: React.FC = () => {
 
   const handleLikeComment = async (commentId: string, postId: string) => {
     try {
-      const res = await fetch(`http://localhost:3000/server/comment/${commentId}/like`, {
+      const res = await fetch(`${API_BASE}/server/comment/${commentId}/like`, {
         method: "PUT",
         credentials: "include"
       })
@@ -224,7 +225,7 @@ const Home: React.FC = () => {
       return { ...prev, following };
     });
     try {
-      const res = await fetch(`http://localhost:3000/server/user/${authorId}/follow`, {
+      const res = await fetch(`${API_BASE}/server/user/${authorId}/follow`, {
         method: "PUT",
         credentials: "include",
       });

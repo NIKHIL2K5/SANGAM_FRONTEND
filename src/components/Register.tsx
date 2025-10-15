@@ -2,6 +2,7 @@ import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext.js";
 import { ThemeContext } from "../context/ThemeContext.js";
+import { API_BASE } from "../lib/api.js";
 
 function Register() {
   const navigate = useNavigate()
@@ -33,7 +34,7 @@ function Register() {
     if (userEmail === "") return;
     if (password === "") return;
 
-    const response = await fetch("http://localhost:3000/server/user/register", {
+    const response = await fetch(`${API_BASE}/server/user/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include", // send cookies
