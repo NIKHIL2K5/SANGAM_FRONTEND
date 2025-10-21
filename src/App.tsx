@@ -9,7 +9,8 @@ import NotFound from "./pages/NotFount.js";
 import { AuthProvider } from "./context/AuthContext.js";
 import ProtectedRoute from "./protectedroute/ProtectedRoute.js";
 import PaymentSuccess from "./components/PAYMENT/PaymentSuccess.js";
-import PaymentCancelled from "./components/PAYMENT/Paymentcancelled.js";
+import PaymentCancelled from "./components/PAYMENT/PaymentCancelled.js";
+
 
 function App() {
   return (
