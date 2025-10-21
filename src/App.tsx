@@ -8,6 +8,8 @@ import LoginRegister from "./pages/LoginRegister.js";
 import NotFound from "./pages/NotFount.js";
 import { AuthProvider } from "./context/AuthContext.js";
 import ProtectedRoute from "./protectedroute/ProtectedRoute.js";
+import PaymentSuccess from "./components/PAYMENT/PaymentSuccess.js";
+import PaymentCancelled from "./components/PAYMENT/Paymentcancelled.js";
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/login" element={<LoginRegister />} />
           <Route path="/chat" element={<Navigate to="/chatcommunity" replace />} />
+          <Route path="/payment/success" element={<PaymentSuccess />} />
+          <Route path="/payment/cancelled" element={<PaymentCancelled />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </>

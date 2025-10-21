@@ -22,7 +22,7 @@ function ChatCommunity() {
     const [searchUser, setSearchUser] = useState("");
     const [searchCommunity, setSearchCommunity] = useState("");
     const [isConnected, setIsConnected] = useState(false);
-    // Community create with search
+
     const [newCommunityName, setNewCommunityName] = useState("");
     const [newCommunityDesc, setNewCommunityDesc] = useState("");
     const [newCommunityLang, setNewCommunityLang] = useState("en");
@@ -30,7 +30,6 @@ function ChatCommunity() {
     const [memberSearch, setMemberSearch] = useState("");
     const [memberResults, setMemberResults] = useState<UserLite[]>([]);
     const [pendingMembers, setPendingMembers] = useState<UserLite[]>([]);
-    // Manage members via search
     const [manageSearch, setManageSearch] = useState("");
     const [manageResults, setManageResults] = useState<UserLite[]>([]);
     const [membersToAdd, setMembersToAdd] = useState<UserLite[]>([]);
@@ -53,7 +52,7 @@ function ChatCommunity() {
         })();
     }, []);
 
-    // Load recent DM conversations for sidebar when user is known
+    
     useEffect(() => {
         (async () => {
             try {
@@ -110,17 +109,28 @@ function ChatCommunity() {
 
     useEffect(() => {
         if (!socket) return;
-        const onError = (err: any) => console.error("socket connect_error", err?.message || err);
-        const onDisconnect = (reason: string) => { console.warn("socket disconnected", reason); setIsConnected(false); };
-        const onConnect = () => { setIsConnected(true); };
+        console.log("Socket instance created:", socket);
+        const onError = (err: any) => {
+            console.error("❌ Connection error:", err?.message || err);
+            console.log("Trying to connect to:", API_BASE);
+        };
+        const onDisconnect = (reason: string) => {
+            console.log("🔌 Disconnected:", reason);
+            setIsConnected(false);
+        };
+        const onConnect = () => {
+            console.log("✅ Connected to server with ID:", socket.id);
+            setIsConnected(true);
+        };
         socket.on("connect_error", onError);
         socket.on("disconnect", onDisconnect);
         socket.on("connect", onConnect);
+        socket.connect();
         return () => {
             socket.off("connect_error", onError);
             socket.off("disconnect", onDisconnect);
             socket.off("connect", onConnect);
-            socket.close();
+            socket.disconnect();
         };
     }, [socket]);
 
@@ -303,7 +313,7 @@ function ChatCommunity() {
                     const arr = await res.json();
                     setMemberResults(arr as UserLite[]);
                 }
-            } catch {}
+            } catch { }
         }, 300);
         return () => clearTimeout(h);
     }, [memberSearch]);
@@ -319,7 +329,7 @@ function ChatCommunity() {
                     const arr = await res.json();
                     setManageResults(arr as UserLite[]);
                 }
-            } catch {}
+            } catch { }
         }, 300);
         return () => clearTimeout(h);
     }, [manageSearch]);
@@ -361,7 +371,7 @@ function ChatCommunity() {
                 setNewCommunityName(""); setNewCommunityDesc(""); setNewCommunityLang("en"); setNewCommunityRegion("");
                 setMemberSearch(""); setMemberResults([]); setPendingMembers([]);
             }
-        } catch {}
+        } catch { }
     };
 
     const addMembersViaSearch = async () => {
@@ -377,7 +387,7 @@ function ChatCommunity() {
                 setMembersToAdd([]);
                 setManageSearch(""); setManageResults([]);
             }
-        } catch {}
+        } catch { }
     };
 
     const activeMessages = currentRoomId ? (roomMessages[currentRoomId] || []) : [];
@@ -449,22 +459,46 @@ function ChatCommunity() {
                                     {activeMessages.map((m) => {
                                         const mine = currentUser && m.from === currentUser._id;
                                         return (
-                                            <div key={m._id} className={`max-w-[70%] rounded-2xl px-3 py-2 text-sm ${mine ? (theme === "dark" ? "ml-auto bg-white text-black" : "ml-auto bg-black text-white") : (theme === "dark" ? "bg-gray-900" : "bg-gray-100")}`}>
-                                                <div>{m.body}</div>
-                                                <div className="mt-1 text-[10px] opacity-60">{new Date(m.createdAt).toLocaleTimeString()}</div>
+                                            <div key={m._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                                                <div
+                                                    className={`max-w-[70%] break-words rounded-2xl px-3 py-2 text-sm ${
+                                                        mine
+                                                            ? (theme === "dark" ? "bg-blue-600 text-white" : "bg-blue-500 text-white")
+                                                            : (theme === "dark" ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-900")
+                                                    } ${m.optimistic ? "opacity-60" : ""}`}
+                                                >
+                                                    {m.body}
+                                                </div>
                                             </div>
-                                        )
+                                        );
                                     })}
                                 </div>
                                 <div className={`flex items-center gap-2 border-t p-3 ${theme === "dark" ? "border-gray-800" : "border-gray-200"}`}>
-                                    <input value={input} onChange={(e) => {
-                                        const v = e.target.value;
-                                        setInput(v);
-                                        if (socket && currentRoomId) {
-                                            socket.emit("typing", { roomId: currentRoomId, isTyping: !!v });
-                                        }
-                                    }} disabled={!selectedUser} placeholder={selectedUser ? "Type a message" : "Select a user"} className={`flex-1 rounded-full border px-4 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
-                                    <button onClick={sendMessage} disabled={!selectedUser || !input.trim()} className={`rounded-full px-4 py-2 text-sm font-semibold ${theme === "dark" ? "bg-white text-black disabled:opacity-50" : "bg-black text-white disabled:opacity-50"}`}>
+                                    <input
+                                        type="text"
+                                        value={input}
+                                        onChange={(e) => {
+                                            setInput(e.target.value);
+                                            if (socket && isConnected && currentRoomId) {
+                                                socket.emit("typing", { roomId: currentRoomId, isTyping: true });
+                                            }
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") sendMessage();
+                                        }}
+                                        placeholder="Type a message..."
+                                        className={`flex-1 rounded-full border px-3 py-2 text-sm ${
+                                            theme === "dark"
+                                                ? "bg-black border-gray-800 text-white"
+                                                : "bg-white border-gray-200 text-gray-900"
+                                        }`}
+                                    />
+                                    <button
+                                        onClick={sendMessage}
+                                        className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                                            theme === "dark" ? "bg-white text-black" : "bg-black text-white"
+                                        }`}
+                                    >
                                         Send
                                     </button>
                                 </div>
@@ -485,29 +519,29 @@ function ChatCommunity() {
                                 </div>
                                 <div className="mb-4 border-t pt-4">
                                     <div className="mb-2 text-xs opacity-70">Create community</div>
-                                    <input value={newCommunityName} onChange={(e)=>setNewCommunityName(e.target.value)} placeholder="Name" className={`mb-2 w-full rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
-                                    <input value={newCommunityDesc} onChange={(e)=>setNewCommunityDesc(e.target.value)} placeholder="Description (optional)" className={`mb-2 w-full rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
+                                    <input value={newCommunityName} onChange={(e) => setNewCommunityName(e.target.value)} placeholder="Name" className={`mb-2 w-full rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
+                                    <input value={newCommunityDesc} onChange={(e) => setNewCommunityDesc(e.target.value)} placeholder="Description (optional)" className={`mb-2 w-full rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
                                     <div className="mb-2 flex gap-2">
-                                        <input value={newCommunityLang} onChange={(e)=>setNewCommunityLang(e.target.value)} placeholder="Lang (en)" className={`flex-1 rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
-                                        <input value={newCommunityRegion} onChange={(e)=>setNewCommunityRegion(e.target.value)} placeholder="Region" className={`w-[130px] rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
+                                        <input value={newCommunityLang} onChange={(e) => setNewCommunityLang(e.target.value)} placeholder="Lang (en)" className={`flex-1 rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
+                                        <input value={newCommunityRegion} onChange={(e) => setNewCommunityRegion(e.target.value)} placeholder="Region" className={`w-[130px] rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
                                     </div>
-                                    <input value={memberSearch} onChange={(e)=>setMemberSearch(e.target.value)} placeholder="Search users to add" className={`mb-2 w-full rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
-                                    {memberResults.length>0 && (
+                                    <input value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} placeholder="Search users to add" className={`mb-2 w-full rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
+                                    {memberResults.length > 0 && (
                                         <div className={`mb-2 max-h-40 overflow-auto rounded-lg border ${theme === "dark" ? "border-gray-800" : "border-gray-200"}`}>
                                             {memberResults.map(u => (
-                                                <button key={u._id} onClick={()=>addPendingMember(u)} className={`flex w-full items-center gap-2 px-2 py-2 text-left text-sm ${theme === "dark" ? "hover:bg-gray-900" : "hover:bg-gray-100"}`}>
+                                                <button key={u._id} onClick={() => addPendingMember(u)} className={`flex w-full items-center gap-2 px-2 py-2 text-left text-sm ${theme === "dark" ? "hover:bg-gray-900" : "hover:bg-gray-100"}`}>
                                                     <img src={u.profilepic || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} className="h-6 w-6 rounded-full object-cover" />
                                                     <span className="truncate">{u.username}</span>
                                                 </button>
                                             ))}
                                         </div>
                                     )}
-                                    {pendingMembers.length>0 && (
+                                    {pendingMembers.length > 0 && (
                                         <div className="mb-2 flex flex-wrap gap-2">
                                             {pendingMembers.map(u => (
                                                 <span key={u._id} className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs ${theme === "dark" ? "bg-gray-900" : "bg-gray-100"}`}>
                                                     {u.username}
-                                                    <button onClick={()=>removePendingMember(u._id)} className="opacity-70">×</button>
+                                                    <button onClick={() => removePendingMember(u._id)} className="opacity-70">×</button>
                                                 </span>
                                             ))}
                                         </div>
@@ -545,7 +579,7 @@ function ChatCommunity() {
                                         <span className="opacity-60">Select a community to start</span>
                                     )}
                                 </div>
-                                
+
                                 <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
                                     {activeMessages.length === 0 && (
                                         <div className="text-center text-sm opacity-60">No messages yet</div>
