@@ -19,6 +19,7 @@
     "quill": "^2.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-hot-toast": "^2.6.0",
     "react-quill": "^2.0.0",
     "react-router": "^7.9.1",
     "react-router-dom": "^7.9.1",
