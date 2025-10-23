@@ -4,9 +4,11 @@ import { AuthContext } from "../context/AuthContext.js";
 import { ThemeContext } from "../context/ThemeContext.js";
 import { API_BASE } from "../lib/api.js";
 import { toast } from "react-hot-toast";
+import { useLoading } from "../context/LoadingContext.js";
 function Login() {
   const [useremail, setUserEmail] = useState("")
   const [userPassword, setUserPassword] = useState("")
+  const [pending, setPending] = useState(false)
 
   const navigate = useNavigate()
   const themeContext = useContext(ThemeContext)
@@ -14,28 +16,35 @@ function Login() {
 
   const auth = useContext(AuthContext)
   const login = (auth as any)?.login
+  const { show, hide } = useLoading()
 
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (useremail === "") return;
     if (userPassword === "") return;
-
-    const response = await fetch(`${API_BASE}/server/user/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include", // send cookies
-      body: JSON.stringify({ email: useremail, password: userPassword }),
-    });
-
-    const data = await response.json();
-    console.log(data);
-    if (response.ok) {
-      login(data.user); // only user, no token
-      toast.success("Logged in successfully");
-      navigate("/");
-    } else {
-      toast.error(data.message || "Login failed");
+    try {
+      setPending(true)
+      show("Signing in...")
+      const response = await fetch(`${API_BASE}/server/user/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // send cookies
+        body: JSON.stringify({ email: useremail, password: userPassword }),
+      });
+  
+      const data = await response.json();
+      console.log(data);
+      if (response.ok) {
+        login(data.user); // only user, no token
+        toast.success("Logged in successfully");
+        navigate("/");
+      } else {
+        toast.error(data.message || "Login failed");
+      }
+    } finally {
+      hide();
+      setPending(false)
     }
   }
 
@@ -95,12 +104,13 @@ function Login() {
 
         <button
           type="submit"
-          className={`w-full py-2 rounded-md font-semibold transition-colors ${theme === "dark"
+          disabled={pending}
+          className={`w-full py-2 rounded-md font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${theme === "dark"
               ? "bg-yellow-500 hover:bg-yellow-400 text-black"
               : "bg-blue-500 hover:bg-blue-600 text-white"
             }`}
         >
-          Login
+          {pending ? "Logging in..." : "Login"}
         </button>
       </form>
     </div>

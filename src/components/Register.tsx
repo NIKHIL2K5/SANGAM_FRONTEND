@@ -4,6 +4,7 @@ import { AuthContext } from "../context/AuthContext.js";
 import { ThemeContext } from "../context/ThemeContext.js";
 import { API_BASE } from "../lib/api.js";
 import { toast } from "react-hot-toast";
+import { useLoading } from "../context/LoadingContext.js";
 
 function Register() {
   const navigate = useNavigate()
@@ -11,11 +12,13 @@ function Register() {
   const [userName, setUserName] = useState("")
   const [userEmail, setUserEmail] = useState("")
   const [password, setNewPassword] = useState("")
+  const [pending, setPending] = useState(false)
 
   const auth = useContext(AuthContext);
   const themeContext = useContext(ThemeContext);
   const theme = themeContext?.theme || "light";
   const login = auth?.login;
+  const { show, hide } = useLoading();
 
   function changeUserName(event: React.ChangeEvent<HTMLInputElement>) {
     setUserName(event.target.value)
@@ -34,22 +37,28 @@ function Register() {
     if (userName === "") return;
     if (userEmail === "") return;
     if (password === "") return;
+    try {
+      setPending(true)
+      show("Creating your account...")
+      const response = await fetch(`${API_BASE}/server/user/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // send cookies
+        body: JSON.stringify({ username: userName, email: userEmail, password }),
+      });
 
-    const response = await fetch(`${API_BASE}/server/user/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include", // send cookies
-      body: JSON.stringify({ username: userName, email: userEmail, password }),
-    });
-
-    const data = await response.json();
-    console.log(data);
-    if (response.ok) {
-      toast.success("Registered successfully");
-      if (login) login(data.user); // only user, no token
-      navigate("/");
-    } else {
-      toast.error(data.message || "Registration failed");
+      const data = await response.json();
+      console.log(data);
+      if (response.ok) {
+        toast.success("Registered successfully");
+        if (login) login(data.user); // only user, no token
+        navigate("/");
+      } else {
+        toast.error(data.message || "Registration failed");
+      }
+    } finally {
+      hide();
+      setPending(false)
     }
   }
   return (
@@ -111,12 +120,13 @@ function Register() {
 
         <button
           type="submit"
-          className={`w-full py-2 rounded-md font-semibold transition-colors ${theme === "dark"
+          disabled={pending}
+          className={`w-full py-2 rounded-md font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${theme === "dark"
               ? "bg-yellow-500 hover:bg-yellow-400 text-black"
               : "bg-blue-500 hover:bg-blue-600 text-white"
             }`}
         >
-          SIGNUP
+          {pending ? "Creating..." : "SIGNUP"}
         </button>
       </form>
     </div>

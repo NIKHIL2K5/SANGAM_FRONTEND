@@ -4,6 +4,7 @@ import Loading from "../components/Loading.js";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../lib/api.js";
 import { toast } from "react-hot-toast";
+import { useLoading } from "../context/LoadingContext.js";
 
 interface ThemeContextType {
   theme: string;
@@ -45,10 +46,12 @@ const Home: React.FC = () => {
   const [followPending, setFollowPending] = useState<{ [key: string]: boolean }>({})
   const [likePending, setLikePending] = useState<{ [key: string]: boolean }>({})
   const [commentLikePending, setCommentLikePending] = useState<{ [key: string]: boolean }>({})
+  const [postPending, setPostPending] = useState<boolean>(false)
 
   const themeContext = useContext(ThemeContext) as ThemeContextType | undefined;
   const theme = themeContext?.theme ?? "light";
   const navigate = useNavigate();
+  const { show, hide } = useLoading();
 
   useEffect(() => {
     (async () => {
@@ -60,6 +63,7 @@ const Home: React.FC = () => {
   const fetchPosts = async () => {
     try {
       setLoading(true)
+      show("Fetching posts...")
       const response = await fetch(`${API_BASE}/server/post`, {
         credentials: "include",
       });
@@ -70,6 +74,7 @@ const Home: React.FC = () => {
       console.error(error);
     } finally {
       setLoading(false)
+      hide()
     }
   };
 
@@ -88,8 +93,9 @@ const Home: React.FC = () => {
   const handlePost = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!text.trim() && !file) return;
-
     try {
+      setPostPending(true)
+      show("Posting...")
       let response: Response;
       if (file) {
         const formData = new FormData();
@@ -119,6 +125,9 @@ const Home: React.FC = () => {
     } catch (error) {
       console.error(error);
       toast.error("Failed to upload post");
+    } finally {
+      hide();
+      setPostPending(false)
     }
   };
 
@@ -357,9 +366,10 @@ const Home: React.FC = () => {
                     />
                     <button
                       type="submit"
-                      className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition ${theme === "dark" ? "bg-white text-black hover:bg-gray-200" : "bg-black text-white hover:bg-gray-800"}`}
+                      disabled={postPending}
+                      className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed ${theme === "dark" ? "bg-white text-black hover:bg-gray-200" : "bg-black text-white hover:bg-gray-800"}`}
                     >
-                      Post
+                      {postPending ? "Posting..." : "Post"}
                     </button>
                   </div>
                 </div>

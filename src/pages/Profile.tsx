@@ -2,6 +2,7 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import { ThemeContext } from "../context/ThemeContext.js";
 import { API_BASE } from "../lib/api.js";
 import { toast } from "react-hot-toast";
+import { useLoading } from "../context/LoadingContext.js";
 
 type UserType = {
   _id: string;
@@ -33,11 +34,14 @@ function Profile() {
   const [me, setMe] = useState<UserType | null>(null);
   const [posts, setPosts] = useState<PostType[]>([]);
   const [loading, setLoading] = useState(true);
+  const { show, hide } = useLoading();
+  const [supportPending, setSupportPending] = useState(false);
 
   useEffect(() => {
     const run = async () => {
       try {
         setLoading(true);
+        show("Loading your profile...");
         const [meRes, postsRes] = await Promise.all([
           fetch(`${API_BASE}/server/user/profile`, { credentials: "include" }),
           fetch(`${API_BASE}/server/post`, { credentials: "include" }),
@@ -54,6 +58,7 @@ function Profile() {
         console.error(e);
       } finally {
         setLoading(false);
+        hide();
       }
     };
     run();
@@ -68,6 +73,8 @@ function Profile() {
 
   const handleSupport = async() => {
     try{
+      setSupportPending(true);
+      show("Redirecting to checkout...");
       const amount=5
       const to=me?._id
       const response=await fetch(`${API_BASE}/server/payment/create-checkout-session`,{
@@ -87,6 +94,9 @@ function Profile() {
     }
     catch(error){
       toast.error("Failed to initiate payment. Try again.")
+    } finally {
+      hide();
+      setSupportPending(false);
     }
   }
 
@@ -139,7 +149,13 @@ function Profile() {
                 </p>
               </div>
 
-              <button className={`text-white px-4 py-2 rounded ${theme === "dark" ? "bg-yellow-600" : "bg-blue-600"} w-full sm:w-auto mt-2 sm:mt-0`} onClick={handleSupport}>Support This Creator</button>
+              <button
+                className={`text-white px-4 py-2 rounded ${theme === "dark" ? "bg-yellow-600" : "bg-blue-600"} w-full sm:w-auto mt-2 sm:mt-0 disabled:opacity-60 disabled:cursor-not-allowed`}
+                onClick={handleSupport}
+                disabled={supportPending}
+              >
+                {supportPending ? "Redirecting..." : "Support This Creator"}
+              </button>
             </div>
 
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 max-w-lg w-full">
