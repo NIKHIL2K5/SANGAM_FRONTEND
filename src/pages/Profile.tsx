@@ -203,7 +203,6 @@ function Profile() {
                     <div className="p-4 flex items-center gap-5 text-sm">
                       <span>❤️ {post.likes?.length ?? 0}</span>
                       <span>💬 {post.comments?.length ?? 0}</span>
-                      <span>🔄 {post.shares ?? 0}</span>
                     </div>
                   </div>
                 ))}
