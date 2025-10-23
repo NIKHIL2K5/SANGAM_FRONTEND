@@ -14,6 +14,7 @@ function ChatCommunity() {
     const [selectedUser, setSelectedUser] = useState<UserLite | null>(null);
     const [selectedCommunity, setSelectedCommunity] = useState<CommunityLite | null>(null);
     const [people, setPeople] = useState<UserLite[]>([]);
+    const [conversationsLoading, setConversationsLoading] = useState<boolean>(false);
     const [communities, setCommunities] = useState<CommunityLite[]>([]);
     const [roomMessages, setRoomMessages] = useState<Record<string, Msg[]>>({});
     const [input, setInput] = useState("");
@@ -62,6 +63,7 @@ function ChatCommunity() {
         (async () => {
             try {
                 if (!currentUser) return;
+                setConversationsLoading(true);
                 const res = await fetch(`${API_BASE}/server/chat/conversations/list`, { credentials: "include" });
                 if (res.ok) {
                     const list = await res.json();
@@ -76,6 +78,8 @@ function ChatCommunity() {
                 }
             } catch (e) {
                 console.error("Failed to load conversations:", (e as any)?.message || e);
+            } finally {
+                setConversationsLoading(false);
             }
         })();
     }, [currentUser]);
@@ -538,10 +542,11 @@ function ChatCommunity() {
 
                                 <div className="space-y-2">
                                     <div className="text-xs opacity-70">Recent Conversations</div>
-                                    {people.length === 0 && (
+                                    {conversationsLoading ? (
+                                        <div className="text-sm opacity-60">Loading...</div>
+                                    ) : people.length === 0 ? (
                                         <div className="text-sm opacity-60">No recent conversations</div>
-                                    )}
-                                    {people.map((p) => (
+                                    ) : people.map((p) => (
                                         <button key={p._id} onClick={() => openDM(p)} className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition ${selectedUser?._id === p._id ? (theme === "dark" ? "bg-gray-900" : "bg-gray-100") : ""}`}>
                                             <img src={p.profilepic || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} className="h-9 w-9 rounded-full object-cover" alt={p.username} />
                                             <div className="min-w-0">
