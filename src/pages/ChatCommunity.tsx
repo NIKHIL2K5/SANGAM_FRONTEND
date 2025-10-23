@@ -23,6 +23,11 @@ function ChatCommunity() {
     const [searchCommunity, setSearchCommunity] = useState("");
     const [isConnected, setIsConnected] = useState(false);
 
+    // Add new states for search validation
+    const [userSearchResults, setUserSearchResults] = useState<UserLite[]>([]);
+    const [communitySearchResults, setCommunitySearchResults] = useState<CommunityLite[]>([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+
     const [newCommunityName, setNewCommunityName] = useState("");
     const [newCommunityDesc, setNewCommunityDesc] = useState("");
     const [newCommunityLang, setNewCommunityLang] = useState("en");
@@ -302,6 +307,78 @@ function ChatCommunity() {
         navigate({ pathname: "/chatcommunity", search: params.toString() });
     };
 
+    // Search for users with validation
+    const searchAndValidateUser = async () => {
+        if (!searchUser.trim()) {
+            setUserSearchResults([]);
+            return;
+        }
+
+        setSearchLoading(true);
+        try {
+            const res = await fetch(`${API_BASE}/server/user/search?q=${encodeURIComponent(searchUser.trim())}`, { 
+                credentials: "include" 
+            });
+            
+            if (res.ok) {
+                const users = await res.json();
+                setUserSearchResults(users);
+            } else {
+                setUserSearchResults([]);
+            }
+        } catch (error) {
+            console.error("Failed to search users:", error);
+            setUserSearchResults([]);
+        } finally {
+            setSearchLoading(false);
+        }
+    };
+
+    // Search for communities with validation
+    const searchAndValidateCommunity = async () => {
+        if (!searchCommunity.trim()) {
+            setCommunitySearchResults([]);
+            return;
+        }
+
+        setSearchLoading(true);
+        try {
+            const res = await fetch(`${API_BASE}/server/community/search?q=${encodeURIComponent(searchCommunity.trim())}`, { 
+                credentials: "include" 
+            });
+            
+            if (res.ok) {
+                const communities = await res.json();
+                setCommunitySearchResults(communities);
+            } else {
+                setCommunitySearchResults([]);
+            }
+        } catch (error) {
+            console.error("Failed to search communities:", error);
+            setCommunitySearchResults([]);
+        } finally {
+            setSearchLoading(false);
+        }
+    };
+
+    // Handle user search with debouncing
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            searchAndValidateUser();
+        }, 500);
+
+        return () => clearTimeout(timeoutId);
+    }, [searchUser]);
+
+    // Handle community search with debouncing
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            searchAndValidateCommunity();
+        }, 500);
+
+        return () => clearTimeout(timeoutId);
+    }, [searchCommunity]);
+
     // Debounced user search for community creation
     useEffect(() => {
         const h = setTimeout(async () => {
@@ -415,18 +492,58 @@ function ChatCommunity() {
                         <aside className="lg:col-span-4">
                             <div className={`rounded-2xl border p-4 ${theme === "dark" ? "border-gray-800 bg-gray-950" : "border-gray-200 bg-white"}`}>
                                 <div className="mb-3 flex gap-2">
-                                    <input value={searchUser} onChange={(e) => setSearchUser(e.target.value)} placeholder="Search user id or username" className={`flex-1 rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
-                                    <button onClick={() => searchUser && openDM({ _id: searchUser, username: searchUser })} className={`${theme === "dark" ? "bg-white text-black" : "bg-black text-white"} rounded-lg px-3 text-sm font-semibold`}>
-                                        Start
-                                    </button>
+                                    <input 
+                                        value={searchUser} 
+                                        onChange={(e) => setSearchUser(e.target.value)} 
+                                        placeholder="Search user id or username" 
+                                        className={`flex-1 rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} 
+                                    />
                                 </div>
+                                
+                                {/* User Search Results */}
+                                {searchUser.trim() && (
+                                    <div className="mb-3">
+                                        <div className="text-xs opacity-70 mb-2">Search Results:</div>
+                                        {searchLoading ? (
+                                            <div className="text-sm opacity-60">Searching...</div>
+                                        ) : userSearchResults.length > 0 ? (
+                                            <div className="space-y-2 max-h-40 overflow-auto">
+                                                {userSearchResults.map((user) => (
+                                                    <button 
+                                                        key={user._id} 
+                                                        onClick={() => {
+                                                            openDM(user);
+                                                            setSearchUser("");
+                                                            setUserSearchResults([]);
+                                                        }}
+                                                        className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition ${theme === "dark" ? "hover:bg-gray-900" : "hover:bg-gray-100"}`}
+                                                    >
+                                                        <img 
+                                                            src={user.profilepic || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} 
+                                                            className="h-9 w-9 rounded-full object-cover" 
+                                                            alt={user.username}
+                                                        />
+                                                        <div className="min-w-0">
+                                                            <div className="truncate text-sm font-medium">{user.username}</div>
+                                                            <div className="text-xs opacity-60">Tap to chat</div>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm opacity-60">No users found</div>
+                                        )}
+                                    </div>
+                                )}
+
                                 <div className="space-y-2">
+                                    <div className="text-xs opacity-70">Recent Conversations</div>
                                     {people.length === 0 && (
                                         <div className="text-sm opacity-60">No recent conversations</div>
                                     )}
                                     {people.map((p) => (
                                         <button key={p._id} onClick={() => openDM(p)} className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition ${selectedUser?._id === p._id ? (theme === "dark" ? "bg-gray-900" : "bg-gray-100") : ""}`}>
-                                            <img src={p.profilepic || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} className="h-9 w-9 rounded-full object-cover" />
+                                            <img src={p.profilepic || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} className="h-9 w-9 rounded-full object-cover" alt={p.username} />
                                             <div className="min-w-0">
                                                 <div className="truncate text-sm font-medium">{p.username}</div>
                                                 <div className="text-xs opacity-60">Tap to chat</div>
@@ -442,7 +559,7 @@ function ChatCommunity() {
                                 <div className={`flex items-center gap-3 border-b px-4 py-3 text-sm font-semibold ${theme === "dark" ? "border-gray-800" : "border-gray-200"}`}>
                                     {selectedUser ? (
                                         <div className="flex items-center gap-3">
-                                            <img src={selectedUser.profilepic || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} className="h-8 w-8 rounded-full object-cover" />
+                                            <img src={selectedUser.profilepic || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} className="h-8 w-8 rounded-full object-cover" alt={selectedUser.username} />
                                             <div className="flex flex-col">
                                                 <span className="truncate">{selectedUser.username}</span>
                                                 {isPeerTyping && <span className="text-xs opacity-70">typing…</span>}
@@ -512,11 +629,50 @@ function ChatCommunity() {
                         <aside className="lg:col-span-4">
                             <div className={`rounded-2xl border p-4 ${theme === "dark" ? "border-gray-800 bg-gray-950" : "border-gray-200 bg-white"}`}>
                                 <div className="mb-3 flex gap-2">
-                                    <input value={searchCommunity} onChange={(e) => setSearchCommunity(e.target.value)} placeholder="Search or enter community id" className={`flex-1 rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
-                                    <button onClick={() => setSelectedCommunity(searchCommunity ? { _id: searchCommunity, name: searchCommunity } as CommunityLite : null)} className={`${theme === "dark" ? "bg-white text-black" : "bg-black text-white"} rounded-lg px-3 text-sm font-semibold`}>
-                                        Open
-                                    </button>
+                                    <input 
+                                        value={searchCommunity} 
+                                        onChange={(e) => setSearchCommunity(e.target.value)} 
+                                        placeholder="Search community name" 
+                                        className={`flex-1 rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} 
+                                    />
                                 </div>
+
+                                {/* Community Search Results */}
+                                {searchCommunity.trim() && (
+                                    <div className="mb-3">
+                                        <div className="text-xs opacity-70 mb-2">Search Results:</div>
+                                        {searchLoading ? (
+                                            <div className="text-sm opacity-60">Searching...</div>
+                                        ) : communitySearchResults.length > 0 ? (
+                                            <div className="space-y-2 max-h-40 overflow-auto">
+                                                {communitySearchResults.map((community) => (
+                                                    <button 
+                                                        key={community._id} 
+                                                        onClick={() => {
+                                                            setSelectedCommunity(community);
+                                                            setSearchCommunity("");
+                                                            setCommunitySearchResults([]);
+                                                        }}
+                                                        className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition ${theme === "dark" ? "hover:bg-gray-900" : "hover:bg-gray-100"}`}
+                                                    >
+                                                        <img 
+                                                            src={community.avatar || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} 
+                                                            className="h-9 w-9 rounded-full object-cover" 
+                                                            alt={community.name}
+                                                        />
+                                                        <div className="min-w-0">
+                                                            <div className="truncate text-sm font-medium">{community.name}</div>
+                                                            <div className="text-xs opacity-60">Tap to open</div>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm opacity-60">No communities found</div>
+                                        )}
+                                    </div>
+                                )}
+
                                 <div className="mb-4 border-t pt-4">
                                     <div className="mb-2 text-xs opacity-70">Create community</div>
                                     <input value={newCommunityName} onChange={(e) => setNewCommunityName(e.target.value)} placeholder="Name" className={`mb-2 w-full rounded-lg border px-3 py-2 text-sm ${theme === "dark" ? "bg-black border-gray-800 text-white" : "bg-white border-gray-200 text-gray-900"}`} />
@@ -530,7 +686,7 @@ function ChatCommunity() {
                                         <div className={`mb-2 max-h-40 overflow-auto rounded-lg border ${theme === "dark" ? "border-gray-800" : "border-gray-200"}`}>
                                             {memberResults.map(u => (
                                                 <button key={u._id} onClick={() => addPendingMember(u)} className={`flex w-full items-center gap-2 px-2 py-2 text-left text-sm ${theme === "dark" ? "hover:bg-gray-900" : "hover:bg-gray-100"}`}>
-                                                    <img src={u.profilepic || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} className="h-6 w-6 rounded-full object-cover" />
+                                                    <img src={u.profilepic || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} className="h-6 w-6 rounded-full object-cover" alt={u.username} />
                                                     <span className="truncate">{u.username}</span>
                                                 </button>
                                             ))}
@@ -551,12 +707,13 @@ function ChatCommunity() {
                                     </button>
                                 </div>
                                 <div className="space-y-2">
+                                    <div className="text-xs opacity-70">Your Communities</div>
                                     {communities.length === 0 && (
                                         <div className="text-sm opacity-60">No communities</div>
                                     )}
                                     {communities.map((c) => (
                                         <button key={c._id} onClick={() => setSelectedCommunity(c)} className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition ${selectedCommunity?._id === c._id ? (theme === "dark" ? "bg-gray-900" : "bg-gray-100") : ""}`}>
-                                            <img src={c.avatar || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} className="h-9 w-9 rounded-full object-cover" />
+                                            <img src={c.avatar || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} className="h-9 w-9 rounded-full object-cover" alt={c.name} />
                                             <div className="min-w-0">
                                                 <div className="truncate text-sm font-medium">{c.name}</div>
                                                 <div className="text-xs opacity-60">Tap to open</div>
@@ -572,7 +729,7 @@ function ChatCommunity() {
                                 <div className={`flex items-center gap-3 border-b px-4 py-3 text-sm font-semibold ${theme === "dark" ? "border-gray-800" : "border-gray-200"}`}>
                                     {selectedCommunity ? (
                                         <div className="flex items-center gap-3">
-                                            <img src={selectedCommunity.avatar || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} className="h-8 w-8 rounded-full object-cover" />
+                                            <img src={selectedCommunity.avatar || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"} className="h-8 w-8 rounded-full object-cover" alt={selectedCommunity.name} />
                                             <span className="truncate">{selectedCommunity.name}</span>
                                         </div>
                                     ) : (
@@ -610,37 +767,3 @@ function ChatCommunity() {
 }
 
 export default ChatCommunity;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

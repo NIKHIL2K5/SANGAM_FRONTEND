@@ -1,19 +1,20 @@
 import { Route, Routes, Navigate } from "react-router-dom";
-import Navbar from "./components/Navbar.js";
-import ChatCommunity from "./pages/ChatCommunity.js";
-import LandingPage from "./pages/LandingPage.js";
-import Home from "./pages/Home.js";
-import Profile from "./pages/Profile.js"
-import LoginRegister from "./pages/LoginRegister.js";
-import NotFound from "./pages/NotFount.js";
-import { AuthProvider } from "./context/AuthContext.js";
-import ProtectedRoute from "./protectedroute/ProtectedRoute.js";
-import PaymentSuccess from "./components/PAYMENT/PaymentSuccess.js";
-import PaymentCancelled from "./components/PAYMENT/PaymentCancelled.js";
+import Navbar from "./components/Navbar.tsx";
+import ChatCommunity from "./pages/ChatCommunity.tsx";
+import LandingPage from "./pages/LandingPage.tsx";
+import Home from "./pages/Home.tsx";
+import Profile from "./pages/Profile.tsx"
+import LoginRegister from "./pages/LoginRegister.tsx";
+
+import NotFound from "./pages/NotFount.tsx";
+import { AuthProvider } from "./context/AuthContext.tsx";
+import ProtectedRoute from "./protectedroute/ProtectedRoute.tsx";
+import PaymentSuccess from "./components/PAYMENT/PaymentSuccess.tsx";
+import PaymentCancelled from "./components/PAYMENT/PaymentCancelled.tsx";
 
 
 function App() {
-  return (
+  return (  
     <AuthProvider>
       <>
         <Navbar />

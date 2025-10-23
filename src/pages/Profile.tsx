@@ -114,7 +114,7 @@ function Profile() {
           } backdrop-blur supports-[backdrop-filter]:bg-opacity-80`}
         >
           <div className="p-6 sm:p-8 relative">
-            <div className="flex items-end sm:items-center gap-4 sm:gap-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6">
               <img
                 src={avatar}
                 alt="avatar"
@@ -128,20 +128,20 @@ function Profile() {
                     {me?.username || "Your Profile"}
                   </h1>
                   {me?.email && (
-                    <span className={`text-xs px-2 py-1 rounded-full ${theme === "dark" ? "bg-gray-800 text-gray-300" : "bg-gray-100 text-gray-600"}`}>
+                    <span className={`text-xs px-2 py-1 rounded-full ${theme === "dark" ? "bg-gray-800 text-gray-300" : "bg-gray-100 text-gray-600"} truncate max-w-[200px] sm:max-w-none`}>
                       {me.email}
                     </span>
                   )}
                 </div>
-                <p className={`mt-1 text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
+                <p className={` text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
                   Welcome to your space. Share your thoughts, media, and connect with others.
                 </p>
               </div>
 
-              <button className={`text-white px-4 py-2 rounded ${theme === "dark" ? "bg-yellow-600" : "bg-blue-600"}`} onClick={handleSupport}>Support This Creator</button>
+              <button className={`text-white px-4 py-2 rounded ${theme === "dark" ? "bg-yellow-600" : "bg-blue-600"} w-full sm:w-auto mt-2 sm:mt-0`} onClick={handleSupport}>Support This Creator</button>
             </div>
 
-            <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-6 max-w-lg">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 max-w-lg w-full">
               <div className={`rounded-xl px-4 py-3 sm:py-4 text-center border ${theme === "dark" ? "bg-gray-950 border-gray-800" : "bg-gray-50 border-gray-200"}`}>
                 <div className={`text-xs uppercase tracking-wide ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>Posts</div>
                 <div className="text-xl sm:text-2xl font-bolxd">{myPosts.length}</div>

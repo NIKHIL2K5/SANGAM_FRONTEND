@@ -42,11 +42,12 @@ const Home: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [followPending, setFollowPending] = useState<{ [key: string]: boolean }>({})
+  const [likePending, setLikePending] = useState<{ [key: string]: boolean }>({})
+  const [commentLikePending, setCommentLikePending] = useState<{ [key: string]: boolean }>({})
 
   const themeContext = useContext(ThemeContext) as ThemeContextType | undefined;
   const theme = themeContext?.theme ?? "light";
   const navigate = useNavigate();
-
 
   useEffect(() => {
     (async () => {
@@ -64,7 +65,6 @@ const Home: React.FC = () => {
       if (!response.ok) throw new Error("Failed to fetch posts");
       const data: PostType[] = await response.json();
       setPosts(data);
-      console.log(data)
     } catch (error) {
       console.error(error);
     } finally {
@@ -83,8 +83,6 @@ const Home: React.FC = () => {
       console.error(err)
     }
   }
-
-
 
   const handlePost = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -122,44 +120,67 @@ const Home: React.FC = () => {
       alert("Something went wrong while uploading the post.");
     }
   };
+
   const handleLike = async (postId: string) => {
+    if (!currentUser) return;
+    
+    setLikePending(prev => ({ ...prev, [postId]: true }));
+    
+    const post = posts.find(p => p._id === postId);
+    if (!post) return;
+    
+    const isCurrentlyLiked = (post.likes || []).includes(currentUser._id);
+    const currentLikes = post.likes || [];
+    
+    // Optimistic update
+    setPosts(prev => prev.map(p => {
+      if (p._id !== postId) return p;
+      
+      if (isCurrentlyLiked) {
+        return {
+          ...p,
+          likes: currentLikes.filter(id => id !== currentUser._id)
+        };
+      } else {
+        return {
+          ...p,
+          likes: [...currentLikes, currentUser._id]
+        };
+      }
+    }));
+
     try {
       const response = await fetch(`${API_BASE}/server/post/${postId}/like`, {
         method: "PUT",
         credentials: "include"
-      })
+      });
+      
       if (!response.ok) {
-        const errText = await response.text()
-        console.error('Like post failed:', errText)
-        throw new Error("Failed to like the post")
+        const errText = await response.text();
+        throw new Error("Failed to like the post");
       }
-      const updatedPost = await response.json()
-      setPosts((prev) => prev.map((p) => p._id === postId ? updatedPost : p))
-      // Ensure sync for text-only posts as well
-      fetchPosts()
+      
+      const updatedPost = await response.json();
+      setPosts(prev => prev.map(p => p._id === postId ? updatedPost : p));
+      
     } catch (error) {
-      console.log(error)
+      console.error('Like error:', error);
+      // Revert optimistic update on error
+      setPosts(prev => prev.map(p => {
+        if (p._id !== postId) return p;
+        return {
+          ...p,
+          likes: currentLikes
+        };
+      }));
+      alert("Failed to update like. Please try again.");
+    } finally {
+      setLikePending(prev => {
+        const { [postId]: _, ...rest } = prev;
+        return rest;
+      });
     }
-  }
-
-  const handleShare = async (postId: string) => {
-    try {
-      const res = await fetch(`${API_BASE}/server/post/${postId}/share`, {
-        method: "PUT",
-        credentials: "include"
-      })
-      if (!res.ok) {
-        const errText = await res.text()
-        console.error('Share post failed:', errText)
-        throw new Error("Failed to share the post")
-      }
-      const updatedPost = await res.json()
-      setPosts((prev) => prev.map((p) => p._id === postId ? updatedPost : p))
-      fetchPosts()
-    } catch (error) {
-      console.error(error)
-    }
-  }
+  };
 
   const handleCommentChange = (postId: string, value: string) => {
     setCommentText((prev) => ({ ...prev, [postId]: value }))
@@ -177,45 +198,93 @@ const Home: React.FC = () => {
       })
       if (!res.ok) {
         const errText = await res.text()
-        console.error('Add comment failed:', errText)
         throw new Error("Failed to add comment")
       }
       const newComment: CommentType = await res.json()
       setPosts((prev) => prev.map((p) => p._id === postId ? ({ ...p, comments: [...(p.comments || []), newComment] }) : p))
       setCommentText((prev) => ({ ...prev, [postId]: "" }))
-      fetchPosts()
     } catch (error) {
       console.error(error)
     }
   }
 
   const handleLikeComment = async (commentId: string, postId: string) => {
+    if (!currentUser) return;
+    
+    setCommentLikePending(prev => ({ ...prev, [commentId]: true }));
+    
+    const post = posts.find(p => p._id === postId);
+    if (!post) return;
+    
+    const comment = (post.comments || []).find(c => c._id === commentId);
+    if (!comment) return;
+    
+    const isCurrentlyLiked = (comment.likes || []).includes(currentUser._id);
+    const currentLikes = comment.likes || [];
+    
+    // Optimistic update for comment like
+    setPosts(prev => prev.map(p => {
+      if (p._id !== postId) return p;
+      
+      const updatedComments = (p.comments || []).map(c => {
+        if (c._id !== commentId) return c;
+        
+        if (isCurrentlyLiked) {
+          return {
+            ...c,
+            likes: currentLikes.filter(id => id !== currentUser._id)
+          };
+        } else {
+          return {
+            ...c,
+            likes: [...currentLikes, currentUser._id]
+          };
+        }
+      });
+      
+      return { ...p, comments: updatedComments };
+    }));
+
     try {
       const res = await fetch(`${API_BASE}/server/comment/${commentId}/like`, {
         method: "PUT",
         credentials: "include"
-      })
+      });
+      
       if (!res.ok) {
-        const errText = await res.text()
-        console.error('Like comment failed:', errText)
-        throw new Error("Failed to like the comment")
+        const errText = await res.text();
+        throw new Error("Failed to like the comment");
       }
-      const updatedComment: CommentType = await res.json()
-      setPosts((prev) => prev.map((p) => {
-        if (p._id !== postId) return p
-        const updatedComments = (p.comments || []).map((c) => c._id === commentId ? updatedComment : c)
-        return { ...p, comments: updatedComments }
-      }))
-      fetchPosts()
+      
+      const updatedComment: CommentType = await res.json();
+      setPosts(prev => prev.map(p => {
+        if (p._id !== postId) return p;
+        const updatedComments = (p.comments || []).map(c => c._id === commentId ? updatedComment : c);
+        return { ...p, comments: updatedComments };
+      }));
+      
     } catch (error) {
-      console.error(error)
+      console.error('Comment like error:', error);
+      // Revert optimistic update on error
+      setPosts(prev => prev.map(p => {
+        if (p._id !== postId) return p;
+        const updatedComments = (p.comments || []).map(c => {
+          if (c._id !== commentId) return c;
+          return { ...c, likes: currentLikes };
+        });
+        return { ...p, comments: updatedComments };
+      }));
+    } finally {
+      setCommentLikePending(prev => {
+        const { [commentId]: _, ...rest } = prev;
+        return rest;
+      });
     }
-  }
+  };
 
   const handleFollowToggle = async (authorId: string) => {
-    // optimistic update
     setFollowPending(prev => ({ ...prev, [authorId]: true }));
-    let reverted = false;
+    
     setCurrentUser((prev: any) => {
       if (!prev) return prev;
       const isFollowing = (prev.following || []).includes(authorId);
@@ -224,6 +293,7 @@ const Home: React.FC = () => {
         : [...(prev.following || []), authorId];
       return { ...prev, following };
     });
+    
     try {
       const res = await fetch(`${API_BASE}/server/user/${authorId}/follow`, {
         method: "PUT",
@@ -234,7 +304,6 @@ const Home: React.FC = () => {
       setCurrentUser((prev: any) => (prev ? { ...prev, following: data.me.following } : prev));
     } catch (error) {
       console.error(error);
-      reverted = true;
       // revert optimistic
       setCurrentUser((prev: any) => {
         if (!prev) return prev;
@@ -256,10 +325,8 @@ const Home: React.FC = () => {
     <div
       className={`min-h-screen transition-colors duration-300 ${theme === "dark" ? "bg-black text-white" : "bg-gray-50 text-gray-900"}`}
     >
-      <div className="mx-auto max-w-2xl px-4 py-6">
-        {/* Composer + Feed Layout */}
+      <div className="mx-auto max-w-2xl px-4 py-6">      
         <div className="grid grid-cols-1 gap-6">
-          {/* Feed Column */}
           <div className="space-y-6">
             <form
               onSubmit={handlePost}
@@ -311,7 +378,6 @@ const Home: React.FC = () => {
                       key={post._id}
                       className={`overflow-hidden rounded-2xl border shadow-sm transition hover:shadow-md ${theme === "dark" ? "border-gray-800 bg-gray-950" : "border-gray-200 bg-white"}`}
                     >
-                      {/* Header */}
                       <header className="flex items-center gap-3 px-4 py-3">
                         <img
                           src={post.author?.profilepic || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"}
@@ -352,12 +418,10 @@ const Home: React.FC = () => {
                         </div>
                       </header>
 
-                      {/* Caption */}
                       {post.content && (
                         <p className={`px-4 pb-3 text-sm ${theme === "dark" ? "text-gray-200" : "text-gray-800"}`}>{post.content}</p>
                       )}
 
-                      {/* Media */}
                       {post.media && (
                         <div className="relative w-full bg-black/5">
                           {post.media.match(/\.(mp4|webm|ogg)$/i) ? (
@@ -373,28 +437,20 @@ const Home: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Actions */}
                       <div className="px-4 py-3">
                         <div className="flex items-center gap-6">
                           <button
-                            className={`inline-flex items-center gap-2 text-sm font-medium transition ${isLiked ? "text-red-500" : theme === "dark" ? "text-gray-300 hover:text-white" : "text-gray-700 hover:text-black"}`}
+                            className={`inline-flex items-center gap-2 text-sm font-medium transition ${isLiked ? "text-red-500" : theme === "dark" ? "text-gray-300 hover:text-white" : "text-gray-700 hover:text-black"} ${likePending[post._id] ? "opacity-50 cursor-not-allowed" : ""}`}
                             onClick={() => handleLike(post._id)}
+                            disabled={likePending[post._id]}
                             aria-pressed={isLiked}
                             title={isLiked ? "Unlike" : "Like"}
                           >
                             <span>❤️</span>
                             <span>{post.likes?.length || 0}</span>
                           </button>
-                          <button
-                            className={`inline-flex items-center gap-2 text-sm font-medium transition ${theme === "dark" ? "text-gray-300 hover:text-white" : "text-gray-700 hover:text-black"}`}
-                            onClick={() => handleShare(post._id)}
-                          >
-                            <span>🔄</span>
-                            <span>{post.shares ?? 0}</span>
-                          </button>
                         </div>
 
-                        {/* Comments Composer */}
                         <div className="mt-4 flex items-center gap-2">
                           <input
                             value={commentText[post._id] || ""}
@@ -410,28 +466,31 @@ const Home: React.FC = () => {
                           </button>
                         </div>
 
-                        {/* Comments List */}
                         <div className="mt-4 space-y-3">
-                          {(post.comments || []).map((c) => (
-                            <div key={c._id} className="flex items-start gap-3">
-                              <img
-                                src={c.author?.profilepic || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"}
-                                className="h-7 w-7 rounded-full object-cover"
-                              />
-                              <div className="flex-1">
-                                <div className="text-sm">
-                                  <span className="font-semibold">{c.author?.username}</span>
-                                  <span className="ml-2 opacity-90">{c.content}</span>
+                          {(post.comments || []).map((c) => {
+                            const isCommentLiked = !!currentUser && (c.likes || []).includes(currentUser._id);
+                            return (
+                              <div key={c._id} className="flex items-start gap-3">
+                                <img
+                                  src={c.author?.profilepic || "https://res.cloudinary.com/ddajnqkjo/image/upload/v1760416394/296fe121-5dfa-43f4-98b5-db50019738a7_gsc8u9.jpg"}
+                                  className="h-7 w-7 rounded-full object-cover"
+                                />
+                                <div className="flex-1">
+                                  <div className="text-sm">
+                                    <span className="font-semibold">{c.author?.username}</span>
+                                    <span className="ml-2 opacity-90">{c.content}</span>
+                                  </div>
+                                  <button
+                                    className={`mt-1 text-xs transition ${isCommentLiked ? "text-red-500" : theme === "dark" ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-black"} ${commentLikePending[c._id] ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    onClick={() => handleLikeComment(c._id, post._id)}
+                                    disabled={commentLikePending[c._id]}
+                                  >
+                                    ❤️ {c.likes?.length || 0}
+                                  </button>
                                 </div>
-                                <button
-                                  className={`mt-1 text-xs transition ${theme === "dark" ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-black"}`}
-                                  onClick={() => handleLikeComment(c._id, post._id)}
-                                >
-                                  ❤️ {c.likes?.length || 0}
-                                </button>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     </article>
