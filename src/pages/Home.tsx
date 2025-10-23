@@ -3,6 +3,7 @@ import { ThemeContext } from "../context/ThemeContext.js";
 import Loading from "../components/Loading.js";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../lib/api.js";
+import { toast } from "react-hot-toast";
 
 interface ThemeContextType {
   theme: string;
@@ -113,11 +114,11 @@ const Home: React.FC = () => {
 
       setPost("");
       setFile(null);
-      alert("Post Uploaded!");
+      toast.success("Post uploaded");
       fetchPosts();
     } catch (error) {
       console.error(error);
-      alert("Something went wrong while uploading the post.");
+      toast.error("Failed to upload post");
     }
   };
 
@@ -173,7 +174,7 @@ const Home: React.FC = () => {
           likes: currentLikes
         };
       }));
-      alert("Failed to update like. Please try again.");
+      toast.error("Failed to update like");
     } finally {
       setLikePending(prev => {
         const { [postId]: _, ...rest } = prev;

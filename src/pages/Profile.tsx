@@ -1,6 +1,7 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { ThemeContext } from "../context/ThemeContext.js";
 import { API_BASE } from "../lib/api.js";
+import { toast } from "react-hot-toast";
 
 type UserType = {
   _id: string;
@@ -81,11 +82,11 @@ function Profile() {
       if (data.url){
         window.location.href=data.url
       }else{
-        alert("Failed to initiate payment, Try Again.")
+        toast.error("Failed to initiate payment. Try again.")
       }
     }
     catch(error){
-      alert("Failed to initiate payment, Try Again.")
+      toast.error("Failed to initiate payment. Try again.")
     }
   }
 

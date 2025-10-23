@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext.js";
 import { ThemeContext } from "../context/ThemeContext.js";
 import { API_BASE } from "../lib/api.js";
+import { toast } from "react-hot-toast";
 function Login() {
   const [useremail, setUserEmail] = useState("")
   const [userPassword, setUserPassword] = useState("")
@@ -31,10 +32,10 @@ function Login() {
     console.log(data);
     if (response.ok) {
       login(data.user); // only user, no token
-      alert("Login Successfully");
+      toast.success("Logged in successfully");
       navigate("/");
     } else {
-      alert(data.message || "Login Failed");
+      toast.error(data.message || "Login failed");
     }
   }
 

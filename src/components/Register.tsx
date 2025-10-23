@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext.js";
 import { ThemeContext } from "../context/ThemeContext.js";
 import { API_BASE } from "../lib/api.js";
+import { toast } from "react-hot-toast";
 
 function Register() {
   const navigate = useNavigate()
@@ -44,11 +45,11 @@ function Register() {
     const data = await response.json();
     console.log(data);
     if (response.ok) {
-      alert("Registered Successfully");
+      toast.success("Registered successfully");
       if (login) login(data.user); // only user, no token
       navigate("/");
     } else {
-      alert(data.message || "Registration Failed");
+      toast.error(data.message || "Registration failed");
     }
   }
   return (
